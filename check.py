@@ -1,4 +1,6 @@
 import time
+import tomllib
+from pathlib import Path
 
 import httpx
 import typer
@@ -28,17 +30,28 @@ def check(url: str, timeout: float = 10.0) -> dict:
         }
 
 
-def main(url: str, timeout: float = 10.0, verbose: bool = False) -> None:
-    """Ping a URL and report status and latency."""
-    result = check(url, timeout=timeout)
-    if verbose:
-        print(result)
-    else:
+def load_services(path: Path) -> list[dict]:
+    """Load the list of services from a TOML config file."""
+    with path.open("rb") as f:
+        config = tomllib.load(f)
+    return config.get("services", [])
+
+
+def main(config: Path = Path("services.toml"), timeout: float = 10.0) -> None:
+    """Check every service listed in the config file."""
+    services = load_services(config)
+    if not services:
+        print(f"No services found in {config}")
+        raise typer.Exit(code=1)
+
+    for service in services:
+        result = check(service["url"], timeout=timeout)
         status_emoji = "✅" if result["ok"] else "❌"
         status_str = result["status"] if result["status"] is not None else "ERR"
-        print(f"{status_emoji} {result['url']} → {status_str} ({result['latency_ms']}ms)")
-        if result["error"]:
-            print(f"   error: {result['error']}")
+        print(
+            f"{status_emoji} {service['name']:12} {result['url']:40} "
+            f"→ {status_str} ({result['latency_ms']}ms)"
+        )
 
 
 if __name__ == "__main__":

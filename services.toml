@@ -1,0 +1,13 @@
+# services.toml — the list of things pulse watches
+
+[[services]]
+name = "example"
+url = "https://example.com"
+
+[[services]]
+name = "google"
+url = "https://www.google.com"
+
+[[services]]
+name = "broken"
+url = "http://localhost:9999"
