@@ -1,6 +1,7 @@
 import time
 
 import httpx
+import typer
 
 
 def check(url: str, timeout: float = 10.0) -> dict:
@@ -27,10 +28,18 @@ def check(url: str, timeout: float = 10.0) -> dict:
         }
 
 
+def main(url: str, timeout: float = 10.0, verbose: bool = False) -> None:
+    """Ping a URL and report status and latency."""
+    result = check(url, timeout=timeout)
+    if verbose:
+        print(result)
+    else:
+        status_emoji = "✅" if result["ok"] else "❌"
+        status_str = result["status"] if result["status"] is not None else "ERR"
+        print(f"{status_emoji} {result['url']} → {status_str} ({result['latency_ms']}ms)")
+        if result["error"]:
+            print(f"   error: {result['error']}")
+
+
 if __name__ == "__main__":
-    for url in [
-        "https://example.com",
-        "https://example.com/definitely-not-a-real-page",
-        "http://localhost:9999",  # nothing listening — should fail
-    ]:
-        print(check(url))
+    typer.run(main)
