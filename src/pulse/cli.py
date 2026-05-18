@@ -27,7 +27,7 @@ def run_cmd(
 
     with session_scope(engine) as session:
         for svc in services:
-            result = check(svc["url"])
+            result = check(svc.url)
             typer.echo(
                 f"{result.url}  ok={result.ok}  status={result.status}  "
                 f"latency_ms={result.latency_ms:.1f}"
