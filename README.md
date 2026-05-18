@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+HEAD
 # Pulse
 
 A tiny service health monitor. Pings a list of URLs on demand, reports status and latency.
@@ -96,4 +96,4 @@ uv run ruff format .       # format
 - [ ] Week 2: async scheduler, SQLite persistence, structlog
 - [ ] Week 3: FastAPI service, web dashboard
 - [ ] Week 4: Docker, GitHub Actions CI, deploy to Fly.io, Discord alerts
->>>>>>> 457c064 (Port checker tests to CheckResult; add db integration test)
+457c064 (Port checker tests to CheckResult; add db integration test)
