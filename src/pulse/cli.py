@@ -7,7 +7,12 @@ import typer
 from pulse.checker import check
 from pulse.config import load_services
 
-app = typer.Typer(help="Pulse — a tiny service health monitor.")
+app = typer.Typer(help="Pulse — a tiny service health monitor.", no_args_is_help=True)
+
+
+@app.callback()
+def _root() -> None:
+    """Pulse — a tiny service health monitor."""
 
 
 @app.command()
