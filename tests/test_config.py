@@ -22,8 +22,8 @@ def test_load_services_reads_toml(tmp_path: Path) -> None:
 
     services = load_services(config_file)
     assert len(services) == 2
-    assert services[0]["name"] == "test1"
-    assert services[1]["url"] == "https://two.test"
+    assert services[0].name == "test1"
+    assert services[1].url == "https://two.test"
 
 
 def test_load_services_empty_when_missing_key(tmp_path: Path) -> None:

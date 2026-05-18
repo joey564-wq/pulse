@@ -17,3 +17,10 @@ class CheckResult(BaseModel):
     latency_ms: float
     error: str | None = None
     checked_at: datetime = Field(default_factory=_utcnow)
+
+
+class Service(BaseModel):
+    """A service to monitor, as declared in services.toml."""
+
+    url: str
+    name: str | None = None

@@ -1,40 +1,62 @@
-"""Command-line interface for pulse."""
-
+"""Pulse CLI."""
 from pathlib import Path
 
 import typer
 
-from pulse.checker import check
-from pulse.config import load_services
+from .checker import check
+from .config import load_services
+from .db import CheckRecord, init_db, make_engine, record_to_row, session_scope
 
-app = typer.Typer(help="Pulse — a tiny service health monitor.", no_args_is_help=True)
+app = typer.Typer(help="Pulse — service health monitor.")
 
 
 @app.callback()
-def _root() -> None:
-    """Pulse — a tiny service health monitor."""
+def main() -> None:
+    """Force typer into multi-command mode (so `pulse run` works)."""
 
 
-@app.command()
-def run(
-    config: Path = Path("services.toml"),
-    timeout: float = 10.0,
+@app.command("run")
+def run_cmd(
+    config: Path = typer.Option(Path("services.toml"), "--config", "-c"),
+    db: Path = typer.Option(Path("pulse.db"), "--db"),
 ) -> None:
-    """Check every service listed in the config file."""
+    """Run one round of checks across all configured services."""
     services = load_services(config)
-    if not services:
-        typer.echo(f"No services found in {config}", err=True)
-        raise typer.Exit(code=1)
+    engine = make_engine(db)
+    init_db(engine)
 
-    for service in services:
-        result = check(service["url"], timeout=timeout)
-        status_emoji = "✅" if result["ok"] else "❌"
-        status_str = result["status"] if result["status"] is not None else "ERR"
+    with session_scope(engine) as session:
+        for svc in services:
+            result = check(svc["url"])
+            typer.echo(
+                f"{result.url}  ok={result.ok}  status={result.status}  "
+                f"latency_ms={result.latency_ms:.1f}"
+            )
+            session.add(record_to_row(result))
+
+
+@app.command("history")
+def history_cmd(
+    url: str | None = typer.Option(None, "--url", help="Filter by URL."),
+    limit: int = typer.Option(20, "--limit", "-n"),
+    db: Path = typer.Option(Path("pulse.db"), "--db"),
+) -> None:
+    """Print the most recent check records."""
+    engine = make_engine(db)
+    init_db(engine)
+
+    with session_scope(engine) as session:
+        query = session.query(CheckRecord).order_by(CheckRecord.checked_at.desc())
+        if url is not None:
+            query = query.filter(CheckRecord.url == url)
+        rows = query.limit(limit).all()
+
+    if not rows:
+        typer.echo("No records yet.")
+        return
+
+    for row in rows:
         typer.echo(
-            f"{status_emoji} {service['name']:12} {result['url']:40} "
-            f"→ {status_str} ({result['latency_ms']}ms)"
+            f"{row.checked_at.isoformat()}  {row.url}  "
+            f"ok={row.ok}  status={row.status}  latency_ms={row.latency_ms:.1f}"
         )
-
-
-if __name__ == "__main__":
-    app()
