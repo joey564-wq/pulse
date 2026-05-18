@@ -1,9 +1,10 @@
 """Pulse CLI."""
+import asyncio
 from pathlib import Path
 
 import typer
 
-from .checker import check
+from .checker import check_many
 from .config import load_services
 from .db import CheckRecord, init_db, make_engine, record_to_row, session_scope
 
@@ -22,12 +23,14 @@ def run_cmd(
 ) -> None:
     """Run one round of checks across all configured services."""
     services = load_services(config)
+    urls = [s.url for s in services]
+
+    results = asyncio.run(check_many(urls))
+
     engine = make_engine(db)
     init_db(engine)
-
     with session_scope(engine) as session:
-        for svc in services:
-            result = check(svc.url)
+        for result in results:
             typer.echo(
                 f"{result.url}  ok={result.ok}  status={result.status}  "
                 f"latency_ms={result.latency_ms:.1f}"
