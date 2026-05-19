@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pulse.db import CheckRecord, init_db, make_engine, record_to_row, session_scope
 from pulse.models import CheckResult
@@ -13,7 +13,7 @@ def test_record_and_read_back():
         status=200,
         ok=True,
         latency_ms=42.5,
-        checked_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        checked_at=datetime(2025, 1, 1, tzinfo=UTC),
     )
 
     with session_scope(engine) as session:

@@ -1,11 +1,12 @@
 """Pydantic data models for Pulse."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from pydantic import BaseModel, Field
 
 
 def _utcnow() -> datetime:
     """UTC-aware 'now'. Avoids the deprecated naive datetime.utcnow()."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class CheckResult(BaseModel):

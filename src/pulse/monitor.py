@@ -5,10 +5,14 @@ from typing import TYPE_CHECKING
 
 from .checker import check_many
 from .db import init_db, record_to_row, session_scope
+from .logging import get_logger
 from .models import CheckResult
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
+
+
+log = get_logger(__name__)
 
 
 async def run_monitor(
@@ -31,10 +35,20 @@ async def run_monitor(
     init_db(engine)
     completed = 0
     while True:
+        log.info("monitor.round.starting", url_count=len(urls))
         results = await check_many(urls)
+        ok_count = sum(1 for r in results if r.ok)
+        log.info(
+            "monitor.round.completed",
+            url_count=len(urls),
+            ok_count=ok_count,
+            failed_count=len(urls) - ok_count,
+        )
+
         with session_scope(engine) as session:
             for result in results:
                 session.add(record_to_row(result))
+
         if on_round is not None:
             on_round(results)
 

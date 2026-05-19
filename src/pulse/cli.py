@@ -7,20 +7,29 @@ import typer
 from .checker import check_many
 from .config import load_services
 from .db import CheckRecord, init_db, make_engine, record_to_row, session_scope
+from .logging import configure_logging
 from .models import CheckResult
 
 app = typer.Typer(help="Pulse — service health monitor.")
+
+# Module-level option definitions (avoids ruff B008: function calls in defaults).
+CONFIG_OPTION = typer.Option(Path("services.toml"), "--config", "-c")
+DB_OPTION = typer.Option(Path("pulse.db"), "--db")
+URL_FILTER_OPTION = typer.Option(None, "--url", help="Filter by URL.")
+LIMIT_OPTION = typer.Option(20, "--limit", "-n")
+INTERVAL_OPTION = typer.Option(30.0, "--interval", "-i", help="Seconds between rounds.")
 
 
 @app.callback()
 def main() -> None:
     """Force typer into multi-command mode (so `pulse run` works)."""
+    configure_logging()
 
 
 @app.command("run")
 def run_cmd(
-    config: Path = typer.Option(Path("services.toml"), "--config", "-c"),
-    db: Path = typer.Option(Path("pulse.db"), "--db"),
+    config: Path = CONFIG_OPTION,
+    db: Path = DB_OPTION,
 ) -> None:
     """Run one round of checks across all configured services."""
     services = load_services(config)
@@ -41,9 +50,9 @@ def run_cmd(
 
 @app.command("history")
 def history_cmd(
-    url: str | None = typer.Option(None, "--url", help="Filter by URL."),
-    limit: int = typer.Option(20, "--limit", "-n"),
-    db: Path = typer.Option(Path("pulse.db"), "--db"),
+    url: str | None = URL_FILTER_OPTION,
+    limit: int = LIMIT_OPTION,
+    db: Path = DB_OPTION,
 ) -> None:
     """Print the most recent check records."""
     engine = make_engine(db)
@@ -68,9 +77,9 @@ def history_cmd(
 
 @app.command("monitor")
 def monitor_cmd(
-    config: Path = typer.Option(Path("services.toml"), "--config", "-c"),
-    db: Path = typer.Option(Path("pulse.db"), "--db"),
-    interval: float = typer.Option(30.0, "--interval", "-i", help="Seconds between rounds."),
+    config: Path = CONFIG_OPTION,
+    db: Path = DB_OPTION,
+    interval: float = INTERVAL_OPTION,
 ) -> None:
     """Run checks repeatedly on a schedule. Press Ctrl-C to stop."""
     from .monitor import run_monitor
