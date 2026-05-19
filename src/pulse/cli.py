@@ -7,6 +7,7 @@ import typer
 from .checker import check_many
 from .config import load_services
 from .db import CheckRecord, init_db, make_engine, record_to_row, session_scope
+from .models import CheckResult
 
 app = typer.Typer(help="Pulse — service health monitor.")
 
@@ -63,3 +64,30 @@ def history_cmd(
             f"{row.checked_at.isoformat()}  {row.url}  "
             f"ok={row.ok}  status={row.status}  latency_ms={row.latency_ms:.1f}"
         )
+
+
+@app.command("monitor")
+def monitor_cmd(
+    config: Path = typer.Option(Path("services.toml"), "--config", "-c"),
+    db: Path = typer.Option(Path("pulse.db"), "--db"),
+    interval: float = typer.Option(30.0, "--interval", "-i", help="Seconds between rounds."),
+) -> None:
+    """Run checks repeatedly on a schedule. Press Ctrl-C to stop."""
+    from .monitor import run_monitor
+
+    services = load_services(config)
+    urls = [s.url for s in services]
+    engine = make_engine(db)
+
+    def print_round(results: list[CheckResult]) -> None:
+        for r in results:
+            typer.echo(
+                f"{r.checked_at.isoformat()}  {r.url}  ok={r.ok}  "
+                f"status={r.status}  latency_ms={r.latency_ms:.1f}"
+            )
+        typer.echo("---")
+
+    try:
+        asyncio.run(run_monitor(urls, engine, interval_seconds=interval, on_round=print_round))
+    except KeyboardInterrupt:
+        typer.echo("\nStopped.")
