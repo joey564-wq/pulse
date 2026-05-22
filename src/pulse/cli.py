@@ -6,9 +6,10 @@ import typer
 
 from .checker import check_many
 from .config import load_services
-from .db import CheckRecord, init_db, make_engine, record_to_row, session_scope
+from .db import init_db, make_engine, record_to_row, session_scope
 from .logging import configure_logging
 from .models import CheckResult
+from .queries import get_history
 
 app = typer.Typer(help="Pulse — service health monitor.")
 
@@ -59,10 +60,7 @@ def history_cmd(
     init_db(engine)
 
     with session_scope(engine) as session:
-        query = session.query(CheckRecord).order_by(CheckRecord.checked_at.desc())
-        if url is not None:
-            query = query.filter(CheckRecord.url == url)
-        rows = query.limit(limit).all()
+        rows = get_history(session, url=url, limit=limit)
 
     if not rows:
         typer.echo("No records yet.")
