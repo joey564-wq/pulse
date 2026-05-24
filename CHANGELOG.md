@@ -1,11 +1,15 @@
-# Changelog
+## [0.3.0] — 2026-05-XX
 
-## Week 1 — Foundation
+### Added
+- FastAPI REST API with endpoints for services, history, and summaries.
+- Single-page HTML dashboard with auto-refresh, served at `/`.
+- `pulse serve` CLI command.
+- Per-service configuration: `name`, `interval_seconds`, `timeout_seconds`, `alert_after_failures`.
+- Alerting on consecutive failures via `LogNotifier` and `FileNotifier`.
+- Pydantic response models for clean API serialization (`CheckRecordOut`, `ServiceSummaryOut`).
+- `queries.py` shared by the CLI and the API.
 
-- Day 1: project scaffold with uv, Python 3.13, initial commit
-- Day 2: synchronous URL checker with latency measurement and error handling
-- Day 3: typer-based CLI with help text, timeout flag, verbose mode
-- Day 4: TOML config file with multiple services, formatted output
-- Day 5: restructured as src/pulse package with checker, config, cli modules; added ruff
-- Day 6: pytest suite covering checker and config with httpx mocking
-- Day 7: README, CHANGELOG, polish
+### Changed
+- `run_monitor` signature: now takes `list[Service]` instead of `list[str]` and global `interval_seconds`. Per-service intervals run as concurrent tasks via `asyncio.gather`.
+- `Service` model gains four new fields with sensible defaults; existing TOML files load unchanged.
+- `monitor` CLI command no longer accepts `--interval`; intervals come from `services.toml`.

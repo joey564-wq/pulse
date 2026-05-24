@@ -29,6 +29,23 @@ ALERTS_FILE_OPTION = typer.Option(
     help="Path to append alert events as JSON lines.",
 )
 
+HOST_OPT = typer.Option(
+    "127.0.0.1",
+    "--host",
+    help="Host for the web server.",
+)
+PORT_OPT = typer.Option(
+    8000,
+    "--port",
+    "-p",
+    help="Port for the web server.",
+)
+RELOAD_OPT = typer.Option(
+    False,
+    "--reload",
+    help="Enable auto-reload during development.",
+)
+
 
 @app.callback()
 def main() -> None:
@@ -115,3 +132,13 @@ def monitor_cmd(
         asyncio.run(run_monitor(services, engine, on_result=on_result, rounds=rounds))
     except KeyboardInterrupt:
         typer.echo("\nStopped.")
+
+@app.command()
+def serve(
+    host: str = HOST_OPT,
+    port: int = PORT_OPT,
+    reload: bool = RELOAD_OPT,
+) -> None:
+    """Run the Pulse web server (API + dashboard)."""
+    import uvicorn
+    uvicorn.run("pulse.api:app", host=host, port=port, reload=reload)
