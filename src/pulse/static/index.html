@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulse</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #222;
+      background: #fafafa;
+    }
+    h1 { margin-bottom: 0.25rem; }
+    .subtitle { color: #666; margin-top: 0; margin-bottom: 2rem; font-size: 0.95rem; }
+    .service {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem 1rem;
+      align-items: center;
+    }
+    .service-name { font-weight: 600; font-size: 1.05rem; word-break: break-all; }
+    .uptime { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .uptime.ok { color: #1f7a1f; }
+    .uptime.warn { color: #b07000; }
+    .uptime.fail { color: #b02020; }
+    .meta { color: #666; font-size: 0.9rem; grid-column: 1 / -1; }
+    .meta span { margin-right: 1rem; }
+    #status {
+      font-size: 0.85rem;
+      color: #999;
+      margin-top: 2rem;
+      text-align: right;
+    }
+    .empty { color: #999; text-align: center; padding: 3rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Pulse</h1>
+  <p class="subtitle">Service health monitor</p>
+  <div id="services" class="empty">Loading…</div>
+  <div id="status"></div>
+
+  <script>
+    function uptimeClass(pct) {
+      if (pct >= 99) return 'ok';
+      if (pct >= 95) return 'warn';
+      return 'fail';
+    }
+
+    function formatLatency(ms) {
+      if (ms === null || ms === undefined) return '—';
+      return `${Math.round(ms)} ms`;
+    }
+
+    function formatLastChecked(iso) {
+      if (!iso) return 'never';
+      const d = new Date(iso);
+      const ago = Math.round((Date.now() - d.getTime()) / 1000);
+      if (ago < 60) return `${ago}s ago`;
+      if (ago < 3600) return `${Math.round(ago / 60)}m ago`;
+      return `${Math.round(ago / 3600)}h ago`;
+    }
+
+    async function load() {
+      try {
+        const res = await fetch('/summary');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const summaries = await res.json();
+        render(summaries);
+        document.getElementById('status').textContent =
+          `Updated ${new Date().toLocaleTimeString()}`;
+      } catch (err) {
+        document.getElementById('status').textContent =
+          `Error: ${err.message}`;
+      }
+    }
+
+    function render(summaries) {
+      const container = document.getElementById('services');
+      if (summaries.length === 0) {
+        container.className = 'empty';
+        container.textContent = 'No services yet. Run `pulse monitor` to populate.';
+        return;
+      }
+      container.className = '';
+      container.innerHTML = summaries.map(s => `
+        <div class="service">
+          <div class="service-name">${escapeHtml(s.url)}</div>
+          <div class="uptime ${uptimeClass(s.uptime_pct)}">
+            ${s.uptime_pct.toFixed(1)}%
+          </div>
+          <div class="meta">
+            <span>avg ${formatLatency(s.avg_latency_ms)}</span>
+            <span>${s.total_checks} checks</span>
+            <span>last ${formatLastChecked(s.last_checked_at)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    load();
+    setInterval(load, 5000);
+  </script>
+</body>
+</html>

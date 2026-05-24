@@ -4,9 +4,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-import pytest
-
-from pulse.alerts import AlertTracker, FileNotifier, LogNotifier
+from pulse.alerts import AlertTracker, FileNotifier
 from pulse.models import CheckResult, Service
 
 

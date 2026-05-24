@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from pulse.db import CheckRecord, init_db, make_engine, session_scope
@@ -20,6 +22,7 @@ from pulse.queries import (
 from pulse.schemas import CheckRecordOut, ServiceSummaryOut
 
 DB_PATH = Path("pulse.db")
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -40,6 +43,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 def get_session(request: Request) -> Iterator[Session]:
     engine = request.app.state.engine
@@ -48,6 +53,12 @@ def get_session(request: Request) -> Iterator[Session]:
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
+
+
+@app.get("/")
+async def index() -> FileResponse:
+    """Serve the dashboard HTML page."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")

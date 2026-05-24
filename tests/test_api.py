@@ -109,3 +109,17 @@ def test_summary_for_unknown_url_is_zeros(client: TestClient) -> None:
     assert data["total_checks"] == 0
     assert data["uptime_pct"] == 0.0
     assert data["avg_latency_ms"] is None
+
+
+def test_root_serves_dashboard(client: TestClient) -> None:
+    """The root path serves the dashboard HTML."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "<title>Pulse</title>" in response.text
+
+
+def test_static_mount_returns_404_for_missing_file(client: TestClient) -> None:
+    """Tripwire: confirms the static mount works (404, not 500)."""
+    response = client.get("/static/nonexistent.css")
+    assert response.status_code == 404
