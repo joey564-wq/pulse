@@ -24,4 +24,7 @@ class Service(BaseModel):
     """A service to monitor, as declared in services.toml."""
 
     url: str
-    name: str | None = None
+    name: str = Field(default="", description="Display name; defaults to URL hostname")
+    interval_seconds: float = Field(default=60.0, gt=0)
+    timeout_seconds: float = Field(default=5.0, gt=0)
+    alert_after_failures: int = Field(default=3, ge=1)

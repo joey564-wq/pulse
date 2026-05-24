@@ -8,7 +8,6 @@ from .checker import check_many
 from .config import load_services
 from .db import init_db, make_engine, record_to_row, session_scope
 from .logging import configure_logging
-from .models import CheckResult
 from .queries import get_history
 
 app = typer.Typer(help="Pulse — service health monitor.")
@@ -18,7 +17,12 @@ CONFIG_OPTION = typer.Option(Path("services.toml"), "--config", "-c")
 DB_OPTION = typer.Option(Path("pulse.db"), "--db")
 URL_FILTER_OPTION = typer.Option(None, "--url", help="Filter by URL.")
 LIMIT_OPTION = typer.Option(20, "--limit", "-n")
-INTERVAL_OPTION = typer.Option(30.0, "--interval", "-i", help="Seconds between rounds.")
+ROUNDS_OPTION = typer.Option(
+    None,
+    "--rounds",
+    "-r",
+    help="Stop after N rounds per service. Default: run until Ctrl-C.",
+)
 
 
 @app.callback()
@@ -77,24 +81,24 @@ def history_cmd(
 def monitor_cmd(
     config: Path = CONFIG_OPTION,
     db: Path = DB_OPTION,
-    interval: float = INTERVAL_OPTION,
+    rounds: int | None = ROUNDS_OPTION,
 ) -> None:
-    """Run checks repeatedly on a schedule. Press Ctrl-C to stop."""
+    """Run checks repeatedly on per-service schedules. Press Ctrl-C to stop."""
+    from .models import CheckResult, Service
     from .monitor import run_monitor
 
     services = load_services(config)
-    urls = [s.url for s in services]
     engine = make_engine(db)
+    init_db(engine)
 
-    def print_round(results: list[CheckResult]) -> None:
-        for r in results:
-            typer.echo(
-                f"{r.checked_at.isoformat()}  {r.url}  ok={r.ok}  "
-                f"status={r.status}  latency_ms={r.latency_ms:.1f}"
-            )
-        typer.echo("---")
+    def on_result(service: Service, result: CheckResult) -> None:
+        typer.echo(
+            f"{result.checked_at.isoformat()}  {service.name or service.url}  "
+            f"ok={result.ok}  status={result.status}  "
+            f"latency_ms={result.latency_ms:.1f}"
+        )
 
     try:
-        asyncio.run(run_monitor(urls, engine, interval_seconds=interval, on_round=print_round))
+        asyncio.run(run_monitor(services, engine, on_result=on_result, rounds=rounds))
     except KeyboardInterrupt:
         typer.echo("\nStopped.")

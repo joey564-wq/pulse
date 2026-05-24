@@ -1,59 +1,65 @@
-"""Background async loop that checks services on a schedule."""
+"""Periodic monitoring loop with per-service intervals."""
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Callable
-from typing import TYPE_CHECKING
 
-from .checker import check_many
-from .db import init_db, record_to_row, session_scope
+import httpx
+from sqlalchemy import Engine
+
+from .checker import check_one
+from .db import record_to_row, session_scope
 from .logging import get_logger
-from .models import CheckResult
-
-if TYPE_CHECKING:
-    from sqlalchemy.engine import Engine
-
+from .models import CheckResult, Service
 
 log = get_logger(__name__)
 
+OnResult = Callable[[Service, CheckResult], None]
 
-async def run_monitor(
-    urls: list[str],
-    engine: "Engine",
-    interval_seconds: float = 30.0,
-    on_round: Callable[[list[CheckResult]], None] | None = None,
+
+async def _run_one_service(
+    service: Service,
+    client: httpx.AsyncClient,
+    engine: Engine,
+    on_result: OnResult | None = None,
     rounds: int | None = None,
 ) -> None:
-    """Check all urls every interval_seconds, persisting each round.
-
-    Parameters:
-      - urls: services to check each round.
-      - engine: SQLAlchemy engine (already created).
-      - interval_seconds: sleep between rounds.
-      - on_round: optional callback called after each round, useful for
-        printing or for tests that want to inspect results.
-      - rounds: if set, stop after this many rounds. If None, run forever.
-    """
-    init_db(engine)
-    completed = 0
-    while True:
-        log.info("monitor.round.starting", url_count=len(urls))
-        results = await check_many(urls)
-        ok_count = sum(1 for r in results if r.ok)
-        log.info(
-            "monitor.round.completed",
-            url_count=len(urls),
-            ok_count=ok_count,
-            failed_count=len(urls) - ok_count,
-        )
-
+    """Periodically check a single service forever (or for `rounds` iterations)."""
+    count = 0
+    while rounds is None or count < rounds:
+        result = await check_one(service.url, client, timeout=service.timeout_seconds)
         with session_scope(engine) as session:
-            for result in results:
-                session.add(record_to_row(result))
+            session.add(record_to_row(result))
+        log.info(
+            "checked",
+            url=service.url,
+            ok=result.ok,
+            latency_ms=result.latency_ms,
+        )
+        if on_result is not None:
+            on_result(service, result)
+        count += 1
+        # Skip the final sleep so the function returns promptly on the last round.
+        if rounds is None or count < rounds:
+            await asyncio.sleep(service.interval_seconds)
 
-        if on_round is not None:
-            on_round(results)
 
-        completed += 1
-        if rounds is not None and completed >= rounds:
-            return
+async def run_monitor(
+    services: list[Service],
+    engine: Engine,
+    *,
+    on_result: OnResult | None = None,
+    rounds: int | None = None,
+) -> None:
+    """Run checks for all services concurrently with per-service intervals.
 
-        await asyncio.sleep(interval_seconds)
+    Each service runs as its own task on the event loop with its own
+    interval and timeout. All tasks share one httpx.AsyncClient for
+    connection pooling.
+    """
+    async with httpx.AsyncClient() as client:
+        tasks = [
+            _run_one_service(s, client, engine, on_result=on_result, rounds=rounds)
+            for s in services
+        ]
+        await asyncio.gather(*tasks)
