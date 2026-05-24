@@ -23,6 +23,11 @@ ROUNDS_OPTION = typer.Option(
     "-r",
     help="Stop after N rounds per service. Default: run until Ctrl-C.",
 )
+ALERTS_FILE_OPTION = typer.Option(
+    Path("alerts.log"),
+    "--alerts-file",
+    help="Path to append alert events as JSON lines.",
+)
 
 
 @app.callback()
@@ -82,8 +87,10 @@ def monitor_cmd(
     config: Path = CONFIG_OPTION,
     db: Path = DB_OPTION,
     rounds: int | None = ROUNDS_OPTION,
+    alerts_file: Path = ALERTS_FILE_OPTION,
 ) -> None:
     """Run checks repeatedly on per-service schedules. Press Ctrl-C to stop."""
+    from .alerts import AlertTracker, CompositeNotifier, FileNotifier, LogNotifier
     from .models import CheckResult, Service
     from .monitor import run_monitor
 
@@ -91,12 +98,18 @@ def monitor_cmd(
     engine = make_engine(db)
     init_db(engine)
 
+    tracker = AlertTracker()
+    notifier = CompositeNotifier(LogNotifier(), FileNotifier(alerts_file))
+
     def on_result(service: Service, result: CheckResult) -> None:
         typer.echo(
             f"{result.checked_at.isoformat()}  {service.name or service.url}  "
             f"ok={result.ok}  status={result.status}  "
             f"latency_ms={result.latency_ms:.1f}"
         )
+        event = tracker.record(service, result)
+        if event is not None:
+            notifier.notify(event)
 
     try:
         asyncio.run(run_monitor(services, engine, on_result=on_result, rounds=rounds))
