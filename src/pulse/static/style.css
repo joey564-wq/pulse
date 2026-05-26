@@ -1,0 +1,240 @@
+/* Pulse dashboard — design tokens + layout
+ *
+ * Tokens at top, references below. To change a color/size/spacing, edit
+ * the token once and the whole page follows.
+ */
+
+:root {
+  /* Type scale — geometric ratio (~1.25). Six steps; if you need a seventh,
+     you have a hierarchy problem, not a sizing problem. */
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.5rem;
+  --text-2xl:  2rem;
+
+  /* Spacing — non-linear because the eye doesn't read whitespace linearly. */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-12: 3rem;
+
+  --radius-sm: 6px;
+  --radius:    10px;
+
+  /* Color — HSL because you can read it ("very pale blueish gray" vs #e6e8eb).
+     Single hue (220) for neutrals so the palette feels coherent, not random. */
+  --bg:         hsl(220 13% 98%);
+  --surface:    hsl(0 0% 100%);
+  --border:     hsl(220 13% 91%);
+  --text:       hsl(220 13% 13%);
+  --text-muted: hsl(220 8% 46%);
+  --ok:         hsl(142 71% 36%);
+  --warn:       hsl(38 92% 45%);
+  --bad:        hsl(0 72% 51%);
+  --accent:     hsl(217 91% 50%);
+
+  /* System fonts — instant load, look correct on every OS. */
+  --font:      ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         hsl(220 13% 10%);
+    --surface:    hsl(220 13% 14%);
+    --border:     hsl(220 13% 22%);
+    --text:       hsl(220 13% 96%);
+    --text-muted: hsl(220 8% 65%);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4);
+}
+
+header.page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+h1.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;  /* slight tightening at display sizes */
+}
+
+.page-subtitle {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ── Stat bar ───────────────────────────────────────────────────────── */
+.stat-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+
+.stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--space-1);
+}
+
+/* ── Service list ───────────────────────────────────────────────────── */
+.service-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.service {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot.ok   { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad  { background: var(--bad); }
+
+.service-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;            /* lets the URL truncate inside grid */
+}
+
+.service-url {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.service-uptime {
+  font-variant-numeric: tabular-nums;  /* prevents digit-width jitter on refresh */
+  font-weight: 500;
+  min-width: 5ch;
+  text-align: right;
+}
+
+.spark {
+  width: 80px;
+  height: 24px;
+  display: block;
+  color: var(--text-muted);
+}
+
+/* ── Recent alerts ──────────────────────────────────────────────────── */
+.alerts-panel { margin-top: var(--space-8); }
+
+.alerts-panel h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.alert-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+.alert-item:last-child         { border-bottom: none; }
+.alert-item .kind.failing      { color: var(--bad); font-weight: 600; }
+.alert-item .kind.recovered    { color: var(--ok);  font-weight: 600; }
+.alert-item time               { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.alert-empty {
+  padding: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.page-foot {
+  margin-top: var(--space-12);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ── Mobile (~iPhone width) ─────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .container { padding: var(--space-6) var(--space-3); }
+  .service {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "dot info   uptime"
+      ".   spark  spark";
+    row-gap: var(--space-2);
+  }
+  .dot            { grid-area: dot; }
+  .service-info   { grid-area: info; }
+  .service-uptime { grid-area: uptime; }
+  .spark          { grid-area: spark; width: 100%; }
+}

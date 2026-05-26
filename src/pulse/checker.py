@@ -1,4 +1,5 @@
 """Async HTTP health checks."""
+
 import asyncio
 import time
 from collections.abc import Iterable

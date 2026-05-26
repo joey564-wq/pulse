@@ -1,4 +1,5 @@
 """Tests for alert tracking and notifiers."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -50,7 +51,7 @@ def test_alert_does_not_refire_while_active() -> None:
     tracker = AlertTracker()
     service = make_service(threshold=2)
     tracker.record(service, make_result(ok=False))
-    tracker.record(service, make_result(ok=False))   # fires "failing"
+    tracker.record(service, make_result(ok=False))  # fires "failing"
     event = tracker.record(service, make_result(ok=False))
     assert event is None  # already alerting, don't re-fire
 
@@ -59,7 +60,7 @@ def test_recovery_event_after_alert() -> None:
     tracker = AlertTracker()
     service = make_service(threshold=2)
     tracker.record(service, make_result(ok=False))
-    tracker.record(service, make_result(ok=False))   # fires "failing"
+    tracker.record(service, make_result(ok=False))  # fires "failing"
     event = tracker.record(service, make_result(ok=True))
     assert event is not None
     assert event.kind == "recovered"
@@ -70,13 +71,14 @@ def test_success_before_threshold_resets_counter() -> None:
     service = make_service(threshold=3)
     tracker.record(service, make_result(ok=False))
     tracker.record(service, make_result(ok=False))
-    tracker.record(service, make_result(ok=True))   # resets
+    tracker.record(service, make_result(ok=True))  # resets
     event = tracker.record(service, make_result(ok=False))
     assert event is None  # only one consecutive failure now
 
 
 def test_file_notifier_writes_jsonl(tmp_path: Path) -> None:
     import json
+
     notifier = FileNotifier(tmp_path / "alerts.log")
     tracker = AlertTracker()
     service = make_service(threshold=1)

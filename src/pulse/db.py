@@ -1,4 +1,5 @@
 """SQLAlchemy database layer for Pulse."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
@@ -27,6 +28,29 @@ class CheckRecord(Base):
     latency_ms: Mapped[float]
     error: Mapped[str | None]
     checked_at: Mapped[datetime] = mapped_column(index=True)
+
+
+class AlertStateRow(Base):
+    """Current alert state for one URL. One row per service ever observed."""
+
+    __tablename__ = "alert_state"
+
+    url: Mapped[str] = mapped_column(primary_key=True)
+    consecutive_failures: Mapped[int] = mapped_column(default=0)
+    active: Mapped[bool] = mapped_column(default=False)
+    last_event_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
+class AlertEventRow(Base):
+    """One alert lifecycle event: a fire or a recovery."""
+
+    __tablename__ = "alert_event"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column(index=True)
+    kind: Mapped[str]  # "failing" | "recovered"
+    occurred_at: Mapped[datetime] = mapped_column(index=True)
+    consecutive_failures: Mapped[int]
 
 
 def make_engine(db_path: Path | str) -> Engine:

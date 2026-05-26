@@ -1,4 +1,5 @@
 """Centralized structlog configuration."""
+
 import logging
 import sys
 

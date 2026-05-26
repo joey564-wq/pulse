@@ -1,1 +1,3 @@
 {"at": "2026-05-24T19:12:02.463644+00:00", "url": "http://localhost:9999", "kind": "failing", "consecutive_failures": 2}
+{"at": "2026-05-24T19:45:20.018761+00:00", "url": "http://localhost:9999", "kind": "failing", "consecutive_failures": 2}
+{"at": "2026-05-26T15:27:02.719073+00:00", "url": "http://localhost:9999", "kind": "failing", "consecutive_failures": 3}

@@ -1,4 +1,5 @@
 """Tests for the async HTTP checker."""
+
 import httpx
 
 from pulse.checker import check_many, check_one
