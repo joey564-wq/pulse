@@ -1,4 +1,5 @@
 """Tests for the FastAPI app."""
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -20,32 +21,34 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     init_db(engine)
 
     with session_scope(engine) as session:
-        session.add_all([
-            CheckRecord(
-                url="https://example.com",
-                ok=True,
-                status=200,
-                latency_ms=40.0,
-                error=None,
-                checked_at=datetime(2026, 5, 1, 12, 0, tzinfo=UTC),
-            ),
-            CheckRecord(
-                url="https://example.com",
-                ok=True,
-                status=200,
-                latency_ms=60.0,
-                error=None,
-                checked_at=datetime(2026, 5, 1, 12, 1, tzinfo=UTC),
-            ),
-            CheckRecord(
-                url="https://example.com",
-                ok=False,
-                status=None,
-                latency_ms=5000.0,
-                error="timeout",
-                checked_at=datetime(2026, 5, 1, 12, 2, tzinfo=UTC),
-            ),
-        ])
+        session.add_all(
+            [
+                CheckRecord(
+                    url="https://example.com",
+                    ok=True,
+                    status=200,
+                    latency_ms=40.0,
+                    error=None,
+                    checked_at=datetime(2026, 5, 1, 12, 0, tzinfo=UTC),
+                ),
+                CheckRecord(
+                    url="https://example.com",
+                    ok=True,
+                    status=200,
+                    latency_ms=60.0,
+                    error=None,
+                    checked_at=datetime(2026, 5, 1, 12, 1, tzinfo=UTC),
+                ),
+                CheckRecord(
+                    url="https://example.com",
+                    ok=False,
+                    status=None,
+                    latency_ms=5000.0,
+                    error="timeout",
+                    checked_at=datetime(2026, 5, 1, 12, 2, tzinfo=UTC),
+                ),
+            ]
+        )
 
     def override_get_session() -> Iterator:
         with session_scope(engine) as session:

@@ -1,8 +1,10 @@
 """Tests for the periodic monitor loop."""
+
 from pathlib import Path
 
 import httpx
 from pytest_httpx import HTTPXMock
+from sqlalchemy import select
 
 from pulse.db import CheckRecord, init_db, make_engine, session_scope
 from pulse.models import CheckResult, Service
@@ -20,9 +22,7 @@ def make_service(url: str = "https://example.com", name: str = "example") -> Ser
     )
 
 
-async def test_monitor_runs_n_rounds_and_persists(
-    tmp_path: Path, httpx_mock: HTTPXMock
-) -> None:
+async def test_monitor_runs_n_rounds_and_persists(tmp_path: Path, httpx_mock: HTTPXMock) -> None:
     """run_monitor executes the requested number of rounds per service and writes each to the DB."""
     httpx_mock.add_response(
         url="https://example.com",
@@ -55,9 +55,7 @@ async def test_monitor_runs_n_rounds_and_persists(
         assert session.query(CheckRecord).count() == 3
 
 
-async def test_monitor_records_failures(
-    tmp_path: Path, httpx_mock: HTTPXMock
-) -> None:
+async def test_monitor_records_failures(tmp_path: Path, httpx_mock: HTTPXMock) -> None:
     """Failed checks are still persisted as rows with ok=False."""
     httpx_mock.add_exception(httpx.ConnectError("boom"), is_reusable=True)
 
@@ -78,9 +76,7 @@ async def test_monitor_records_failures(
     assert all(r.error is not None for r in rows)
 
 
-async def test_monitor_single_round(
-    tmp_path: Path, httpx_mock: HTTPXMock
-) -> None:
+async def test_monitor_single_round(tmp_path: Path, httpx_mock: HTTPXMock) -> None:
     """A monitor configured for 1 round runs exactly 1 round (sanity check)."""
     httpx_mock.add_response(url="https://example.com", status_code=200)
 
@@ -109,12 +105,8 @@ async def test_monitor_runs_multiple_services_concurrently(
     tmp_path: Path, httpx_mock: HTTPXMock
 ) -> None:
     """Each service runs as its own task; all services tick independently."""
-    httpx_mock.add_response(
-        url="https://a.example.com", status_code=200, is_reusable=True
-    )
-    httpx_mock.add_response(
-        url="https://b.example.com", status_code=200, is_reusable=True
-    )
+    httpx_mock.add_response(url="https://a.example.com", status_code=200, is_reusable=True)
+    httpx_mock.add_response(url="https://b.example.com", status_code=200, is_reusable=True)
 
     db = tmp_path / "test.db"
     engine = make_engine(db)
@@ -134,3 +126,36 @@ async def test_monitor_runs_multiple_services_concurrently(
     assert len(rows) == 4
     urls = {r.url for r in rows}
     assert urls == {"https://a.example.com", "https://b.example.com"}
+
+
+async def test_one_failing_service_does_not_kill_others(engine, monkeypatch):
+    """A service that raises in check_one must not stop other services."""
+    from datetime import UTC, datetime
+
+    from pulse import monitor as monitor_mod
+
+    async def flaky_check_one(url, _client, _timeout):
+        if "broken" in url:
+            raise RuntimeError("simulated network meltdown")
+        return CheckResult(
+            url=url,
+            status=200,
+            ok=True,
+            latency_ms=10.0,
+            error=None,
+            checked_at=datetime.now(UTC),
+        )
+
+    monkeypatch.setattr(monitor_mod, "check_one", flaky_check_one)
+
+    services = [
+        Service(url="https://example.com", interval_seconds=1),
+        Service(url="http://broken.invalid", interval_seconds=1),
+    ]
+    await run_monitor(services, engine, rounds=2)
+
+    with session_scope(engine) as session:
+        rows = session.scalars(
+            select(CheckRecord).where(CheckRecord.url == "https://example.com")
+        ).all()
+    assert len(rows) == 2  # healthy service ran both rounds

@@ -1,4 +1,5 @@
 """CLI integration tests."""
+
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -24,9 +25,7 @@ def test_run_then_history_round_trip(tmp_path: Path, httpx_mock):
     config = tmp_path / "services.toml"
     config.write_text('[[services]]\nurl = "https://example.com"\n')
 
-    run_result = runner.invoke(
-        app, ["run", "--config", str(config), "--db", str(db)]
-    )
+    run_result = runner.invoke(app, ["run", "--config", str(config), "--db", str(db)])
     assert run_result.exit_code == 0
     assert "https://example.com" in run_result.output
 
@@ -45,15 +44,12 @@ def test_history_with_url_filter(tmp_path: Path, httpx_mock):
     db = tmp_path / "test.db"
     config = tmp_path / "services.toml"
     config.write_text(
-        '[[services]]\nurl = "https://a.example.com"\n'
-        '[[services]]\nurl = "https://b.example.com"\n'
+        '[[services]]\nurl = "https://a.example.com"\n[[services]]\nurl = "https://b.example.com"\n'
     )
 
     runner.invoke(app, ["run", "--config", str(config), "--db", str(db)])
 
-    filtered = runner.invoke(
-        app, ["history", "--db", str(db), "--url", "https://a.example.com"]
-    )
+    filtered = runner.invoke(app, ["history", "--db", str(db), "--url", "https://a.example.com"])
     assert filtered.exit_code == 0
     assert "https://a.example.com" in filtered.output
     assert "https://b.example.com" not in filtered.output

@@ -1,6 +1,8 @@
 """FastAPI application for Pulse."""
+
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,23 +13,33 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from pulse.db import CheckRecord, init_db, make_engine, session_scope
+from pulse.db import AlertEventRow, CheckRecord, init_db, make_engine, session_scope
 from pulse.queries import (
+    OverallStats,
     ServiceSummary,
     get_all_summaries,
     get_history,
+    get_overall_stats,
+    get_recent_alerts,
     get_summary,
     list_service_urls,
 )
-from pulse.schemas import CheckRecordOut, ServiceSummaryOut
+from pulse.schemas import (
+    AlertEventOut,
+    CheckRecordOut,
+    OverallStatsOut,
+    ServiceSummaryOut,
+)
 
-DB_PATH = Path("pulse.db")
 STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    engine = make_engine(DB_PATH)
+    # Resolved at startup, not at import time, so `pulse serve --db ...`
+    # and `pulse demo` can override via the PULSE_DB env var.
+    db_path = Path(os.environ.get("PULSE_DB", "pulse.db"))
+    engine = make_engine(db_path)
     init_db(engine)
     app.state.engine = engine
     try:
@@ -39,7 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="Pulse",
     description="Service health monitor",
-    version="0.3.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -84,3 +96,13 @@ def summary(session: SessionDep) -> list[ServiceSummary]:
 @app.get("/summary/{url:path}", response_model=ServiceSummaryOut)
 def summary_one(url: str, session: SessionDep) -> ServiceSummary:
     return get_summary(session, url)
+
+
+@app.get("/stats", response_model=OverallStatsOut)
+def stats(session: SessionDep) -> OverallStats:
+    return get_overall_stats(session)
+
+
+@app.get("/alerts/recent", response_model=list[AlertEventOut])
+def alerts_recent(session: SessionDep, limit: int = 10) -> list[AlertEventRow]:
+    return get_recent_alerts(session, limit=limit)
